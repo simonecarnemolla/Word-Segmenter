@@ -17,7 +17,7 @@ Speech segmentation at both word and phoneme levels is crucial for various speec
 
 
 # Method
-![alt text](
+![alt text](https://github.com/aramis024/Word-Segmenter/blob/main/Method.png)
 
 
 # How to run
