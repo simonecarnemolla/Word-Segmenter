@@ -17,7 +17,7 @@ Speech segmentation at both word and phoneme levels is crucial for various speec
 
 
 # Method
-!Alt text
+![alt text](
 
 
 # How to run
