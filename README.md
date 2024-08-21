@@ -54,7 +54,7 @@ TIMIT
 ```
 
 # How to get the weights
-The weights for all tested models are available on [Zenodo](link). After the download place the weights within the ```checkpoint/``` folder.
+The weights for all tested models are available on [Zenodo](https://zenodo.org/records/13351564). After the download place the weights within the ```checkpoint/``` folder.
 
 The final result should be similar to:
 
