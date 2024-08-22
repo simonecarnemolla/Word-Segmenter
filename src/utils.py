@@ -12,13 +12,25 @@ from itertools import groupby
 from src.models import Hubert, Wav2Vec, CNN, CRNN
 import pickle
 
-def check_folders(buckeye, timit):
+def check_folders(buckeye, timit, ntimit):
     
     if len(os.listdir(buckeye)) == 0:
         raise ValueError('Buckeye folder is empty. Please download the data and check the instructions in the README file to organize it')
 
-    if not os.path.exists(timit):
-            raise ValueError('Timit folder does not exist. Please download the data and check the instructions in the README file to organize it')
+    elif len(os.listdir(timit)) == 0:
+            raise ValueError('Timit folder is empty. Please download the data and check the instructions in the README file to organize it')
+    
+    elif os.path.exists(ntimit):
+            ntimit_exists= True
+
+    else:
+        ntimit_exists= False
+
+    return ntimit_exists
+    
+    
+    
+
 
 def get_timit_data(path, indices_path, sr=16000):
 
@@ -40,6 +52,43 @@ def get_timit_data(path, indices_path, sr=16000):
                     words_file= wav_file.replace('.WAV.wav', '.WRD')
                 else:
                     words_file= wav_file.replace('.wav', '.WRD')
+                    
+                words = open(words_file, 'r').readlines()
+                words = [w.strip().split() for w in words]
+                
+                if len(words) == 0:
+                    
+                    print(f"Skipping empty file: {words_file.split('/')[-1]}")
+
+                else:
+                    wav, old_sr= torchaudio.load(wav_file)
+
+                    if old_sr != sr:
+                        wav= torchaudio.transforms.Resample(old_sr, sr)(wav)
+                        
+                    wavs.append(wav)
+                    bound = [(int(w[0]), int(w[1])) for w in words]
+                    bounds.append(bound)
+
+    return wavs, bounds
+
+def get_ntimit_data(path, indices_path, sr=16000):
+
+    with open(indices_path, 'r') as f:
+        indices= f.readlines()
+        indices= [index.replace('\n', '') for index in indices]
+
+    wavs=[]
+    bounds=[]
+
+    for root, _, files in os.walk(path):
+        dir_name= root.split('/')[-2]+ '/'+ root.split('/')[-1]
+        for file in files:
+            file_temp= file.split('/')[-1]
+            if file.endswith('.flac') and dir_name+'/'+file_temp in indices:
+                wav_file= os.path.join(root, file)
+
+                words_file= wav_file.replace('.flac', '.wrd')
                     
                 words = open(words_file, 'r').readlines()
                 words = [w.strip().split() for w in words]
@@ -593,10 +642,9 @@ def plot(test_wavs, preds_bounds, true_bounds, SR):
         ax.set_xlabel('Time', fontsize=20)
         plt.show()
 
-def select_model_and_dataset():
+def select_model_and_dataset(ntimit_exists):
 
     models={'1': 'HuBERT', '2': 'Wav2Vec 2.0', '3': 'CNN', '4': 'CRNN'}
-    datasets={'1': 'Buckeye', '2': 'Timit'}
 
     print ('Choose a model to test:')
     print ('1 HuBERT')
@@ -608,17 +656,36 @@ def select_model_and_dataset():
 
     assert model_name in ['1', '2', '3', '4'], 'Invalid model number, please choose a number between 1 and 4'
 
-    print('Choose a dataset to test:')
-    print('1 Buckeye')
-    print('2 Timit\n')
+    if ntimit_exists:
+        datasets={'1': 'Buckeye', '2': 'Timit', '3': 'NTimit'}
 
-    dataset= input('Enter the dataset number: ')
+        print('Choose a dataset to test:')
+        print('1 Buckeye')
+        print('2 Timit')
+        print('3 NTimit\n')
 
-    assert dataset in ['1', '2'], 'Invalid dataset number, please choose a number between 1 and 2'
+        dataset= input('Enter the dataset number: ')
 
-    print(f'You chose model {models[model_name]} and dataset {datasets[dataset]}\n')
+        assert dataset in ['1', '2', '3'], 'Invalid dataset number, please choose a number between 1 and 3'
 
-    return model_name, dataset
+        print(f'You chose model {models[model_name]} and dataset {datasets[dataset]}\n')
+
+        return model_name, dataset
+    
+    else:
+        datasets={'1': 'Buckeye', '2': 'Timit'}
+
+        print('Choose a dataset to test:')
+        print('1 Buckeye')
+        print('2 Timit\n')
+
+        dataset= input('Enter the dataset number: ')
+
+        assert dataset in ['1', '2'], 'Invalid dataset number, please choose a number between 1 and 2'
+
+        print(f'You chose model {models[model_name]} and dataset {datasets[dataset]}\n')
+
+        return model_name, dataset
 
 def choose_dataset(dataset, test_sets, SR):
 
@@ -632,6 +699,11 @@ def choose_dataset(dataset, test_sets, SR):
             wavs, labels, bounds = test_sets['timit']
 
             TOLERANCE=int(0.04*SR)
+        
+        elif dataset=='3':
+             wavs, labels, bounds = test_sets['ntimit']
+                
+             TOLERANCE=int(0.04*SR)
 
         return wavs, labels, bounds, TOLERANCE
 

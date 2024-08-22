@@ -170,4 +170,11 @@ cython_debug/
 !/data/Buckeye/.gitkeep
 
 # Ignore TIMIT directory and its contents entirely
-/data/TIMIT/
+/data/TIMIT/*
+!/data/TIMIT/.gitkeep
+
+#Ignore NTIMIT directory and its contents entirely
+/data/NTIMIT/
+
+#ignore NTIMIT indices
+/data/ntimit_test_data.txt
