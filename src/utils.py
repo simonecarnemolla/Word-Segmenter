@@ -278,6 +278,111 @@ def pad_bounds(bounds, max_len=0):
 
     return padded_bounds
 
+def get_data(buckeye_corpus_path, train_indices, val_indices, test_indices, timit_testset_path, timit_indices, ntimit_testset_path, ntimit_indices):
+    #check if path exists
+    ntimit_exists = check_folders(buckeye_corpus_path, timit_testset_path, ntimit_testset_path)
+
+    SR=16000
+    FRAME_SIZE=int(0.025*SR)
+    HOP_LENGTH=int(0.025*SR)
+
+    print('Extracting Buckeye data...')
+    buckeye_train_wavs, buckeye_train_bounds= get_buckeye_data(buckeye_corpus_path, train_indices, SR)
+    buckeye_val_wavs, buckeye_val_bounds= get_buckeye_data(buckeye_corpus_path, val_indices, SR)
+    buckeye_test_wavs, buckeye_test_bounds= get_buckeye_data(buckeye_corpus_path, test_indices, SR)
+
+    print('Extracting Timit data...')
+    timit_wavs, timit_bounds= get_timit_data(timit_testset_path, timit_indices, SR)
+
+    if ntimit_exists:
+        print('Extracting NTimit data...')
+        ntimit_wavs, ntimit_bounds= get_ntimit_data(ntimit_testset_path, ntimit_indices, SR)
+
+    print('Extracting Buckeye labels...')
+    buckeye_train_labels= get_labels(buckeye_train_wavs, 
+                             buckeye_train_bounds, 
+                             SR, 
+                             FRAME_SIZE, 
+                             HOP_LENGTH)
+
+    buckeye_val_labels= get_labels(buckeye_val_wavs, 
+                           buckeye_val_bounds, 
+                           SR, 
+                           FRAME_SIZE, 
+                           HOP_LENGTH,
+                           type='test')
+
+    buckeye_test_labels= get_labels(buckeye_test_wavs, 
+                            buckeye_test_bounds, 
+                            SR, 
+                            FRAME_SIZE, 
+                            HOP_LENGTH, 
+                            type='test')
+
+    print('Extracting Timit labels...')
+    timit_labels= get_labels(timit_wavs,
+                             timit_bounds,
+                             SR,
+                             FRAME_SIZE,
+                             HOP_LENGTH,
+                             type='test')
+
+    if ntimit_exists:
+        print('Extracting NTimit labels...')
+        ntimit_labels= get_labels(ntimit_wavs,
+                                  ntimit_bounds,
+                                  SR,
+                                  FRAME_SIZE,
+                                  HOP_LENGTH,
+                                  type='test')
+    print('\n')
+    print('Buckeye Train samples:', len(buckeye_train_wavs), len(buckeye_train_labels), len(buckeye_train_bounds))
+    print('Buckey Val samples:', len(buckeye_val_wavs), len(buckeye_val_labels), len(buckeye_val_bounds))
+    print('Buckeye Test samples:', len(buckeye_test_wavs), len(buckeye_test_labels), len(buckeye_test_bounds))
+    print('Timit Test samples:', len(timit_wavs), len(timit_labels), len(timit_bounds))
+
+    if ntimit_exists:
+        print('NTimit Test samples:', len(ntimit_wavs), len(ntimit_labels), len(ntimit_bounds))
+
+    datasets= (buckeye_train_wavs, 
+               buckeye_train_labels, 
+               buckeye_train_bounds, 
+               buckeye_val_wavs, 
+               buckeye_val_labels, 
+               buckeye_val_bounds, 
+               buckeye_test_wavs, 
+               buckeye_test_labels, 
+               buckeye_test_bounds)
+
+    print('\n')
+    print('Padding Buckeye testset...')
+    buckeye_wavs, buckeye_labels, buckeye_bounds= pad_set(datasets, 
+                                                          buckeye_test_wavs, 
+                                                          buckeye_test_labels, 
+                                                          buckeye_test_bounds)
+
+    print('Padding Timit testset...')
+    timit_wavs, timit_labels, timit_bounds= pad_set(datasets, 
+                                                    timit_wavs, 
+                                                    timit_labels, 
+                                                    timit_bounds)
+
+    if ntimit_exists:   
+        print('Padding NTimit testset...')
+        ntimit_wavs, ntimit_labels, ntimit_bounds= pad_set(datasets, 
+                                                           ntimit_wavs, 
+                                                           ntimit_labels, 
+                                                           ntimit_bounds)
+
+
+    test_sets= {'buckeye': (buckeye_wavs, buckeye_labels, buckeye_bounds), 'timit': (timit_wavs, timit_labels, timit_bounds)}
+
+    if ntimit_exists:
+        print('NTimit testset added to test_sets')
+        test_sets['ntimit']= (ntimit_wavs, ntimit_labels, ntimit_bounds)
+
+    return test_sets, ntimit_exists
+
 def calculate_segmentation_metrics(model_output, target):
     # Calculate predicted classes
     predicted_classes = torch.argmax(model_output.softmax(dim=1), dim=-1)
@@ -759,3 +864,20 @@ def retrieve_model(model_name, time, frames_out, NUM_CLASSES, verbose, freeze):
             raise ValueError('CRNN checkpoint not found. Please download the weights from the link provided in the README file and store it in the ./checkpoint folder')
         
     return model
+
+def continue_testing():
+
+    get_answer= False
+
+    while not get_answer:
+
+        print('Do you want to test another model? (y/n)')
+        answer= input().lower()
+
+        if answer != 'y' and answer != 'n':
+            print('Invalid answer. Please enter y or n')
+
+        else:
+            get_answer= True
+
+    return answer
